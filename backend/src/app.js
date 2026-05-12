@@ -36,7 +36,7 @@ app.use(rateLimit({
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 
-app.use('/auth',       authRouter)
+app.use('/auth', authRouter)
 
 // Uncomment as each member pushes their module
 // app.use('/consent',    consentRouter)
@@ -116,6 +116,8 @@ const start = async () => {
   }
 }
 
-start()
+if (process.env.NODE_ENV !== 'test') {
+  start()
+}
 
 export default app
