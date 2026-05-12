@@ -1,0 +1,225 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+//////////////////////////////////////////////////////
+// ENUMS
+//////////////////////////////////////////////////////
+
+enum ConsentStatus {
+  ACTIVE
+  WITHDRAWN
+  EXPIRED
+}
+
+enum EventType {
+  GRANTED
+  WITHDRAWN
+  UPDATED
+  EXPIRED
+  RENEWED
+}
+
+enum ComplaintStatus {
+  RECEIVED
+  UNDER_REVIEW
+  ESCALATED
+  CLOSED
+}
+
+enum ActorType {
+  USER
+  ADMIN
+  SYSTEM
+}
+
+//////////////////////////////////////////////////////
+// USERS
+//////////////////////////////////////////////////////
+
+model User {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  email        String   @unique
+  mobile       String?
+  name         String?
+  age          Int?
+  isMinor      Boolean  @default(false)
+  guardianId   String?  @db.ObjectId
+
+  createdAt    DateTime @default(now())
+
+  consents     ConsentMaster[]
+  complaints   Complaint[]
+}
+
+//////////////////////////////////////////////////////
+// PURPOSE CATALOG
+//////////////////////////////////////////////////////
+
+model PurposeCatalog {
+  id          String   @id @map("_id")
+  name        String
+  description String?
+  category    String?
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+}
+
+//////////////////////////////////////////////////////
+// NOTICE VERSIONS
+//////////////////////////////////////////////////////
+
+model NoticeVersion {
+  id            String   @id @map("_id")
+  version       String
+  language      String
+  content       String
+
+  purposes      Json
+
+  effectiveFrom DateTime
+  createdAt     DateTime @default(now())
+}
+
+//////////////////////////////////////////////////////
+// CONSENT MASTER (CURRENT STATE)
+//////////////////////////////////////////////////////
+
+model ConsentMaster {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  dataPrincipalId   String   @db.ObjectId
+
+  purposes          Json
+
+  status            ConsentStatus
+  language          String
+
+  noticeVersionId   String
+
+  source            Json
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  expiresAt         DateTime?
+
+  user              User     @relation(fields: [dataPrincipalId], references: [id])
+
+  events            ConsentEvent[]
+}
+
+//////////////////////////////////////////////////////
+// CONSENT EVENTS (IMMUTABLE LEDGER)
+//////////////////////////////////////////////////////
+
+model ConsentEvent {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  consentId         String   @db.ObjectId
+  dataPrincipalId   String   @db.ObjectId
+
+  eventType         EventType
+
+  purposes          Json
+
+  noticeVersionId   String
+
+  actorType         ActorType
+  actorId           String?
+
+  metadata          Json?
+
+  timestamp         DateTime @default(now())
+
+  hash              String
+
+  consent           ConsentMaster @relation(fields: [consentId], references: [id])
+}
+
+//////////////////////////////////////////////////////
+// COMPLAINTS REGISTRY
+//////////////////////////////////////////////////////
+
+model Complaint {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  dataPrincipalId   String   @db.ObjectId
+  consentId         String   @db.ObjectId
+
+  category          String
+  description       String?
+
+  status            ComplaintStatus
+
+  assignedTo        String?
+
+  sla               Json?
+
+  evidence          Json?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User     @relation(fields: [dataPrincipalId], references: [id])
+}
+
+//////////////////////////////////////////////////////
+// REGULATOR COMMUNICATIONS
+//////////////////////////////////////////////////////
+
+model RegulatorCommunication {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  referenceNumber   String
+  subject           String
+
+  receivedDate      DateTime
+  deadline          DateTime
+
+  status            String
+
+  response          Json?
+
+  createdAt         DateTime @default(now())
+}
+
+//////////////////////////////////////////////////////
+// AUDIT LOGS
+//////////////////////////////////////////////////////
+
+model AuditLog {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  actorId     String
+  actorRole   String
+
+  action      String
+
+  resource    Json?
+
+  timestamp   DateTime @default(now())
+
+  ip          String?
+}
+
+//////////////////////////////////////////////////////
+// NOTIFICATIONS
+//////////////////////////////////////////////////////
+
+model Notification {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  userId      String   @db.ObjectId
+
+  type        String
+  message     String
+
+  status      String
+
+  createdAt   DateTime @default(now())
+}
