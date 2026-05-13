@@ -1,12 +1,12 @@
 # Consent Module — CLAUDE.md
 
-Created by Ramya | Last updated: May 13, 2026
+Created by Ramya | Last updated: May 14, 2026 (Sujaa)
 
 
 ## Owners
 
 - Ramya — POST /consent/capture, DELETE /consent/:id/withdraw, GET /consent/status/:principalId
-- Sujaa — GET /consent/:id, GET /consent/proof/:consentId (routes stubbed in router.js, handlers not yet written)
+- Sujaa — GET /consent/:id, GET /consent/proof/:consentId (implemented and wired end-to-end)
 
 
 ## What exists in this module
@@ -19,7 +19,9 @@ Created by Ramya | Last updated: May 13, 2026
 - `getConsentByPrincipalId(principalId)` → ConsentMaster[] ordered by createdAt desc
 - `withdrawConsent(id)` → ConsentMaster — updates status field ONLY, never deletes
 - `findConsentById(id)` → ConsentMaster | null
+- `findConsentWithEvents(id)` → ConsentMaster with `events[]` included, events ordered by timestamp asc
 - `findActivePurposesByIds(ids)` → PurposeCatalog[] — returns only records where isActive: true
+- `findNoticeVersionById(id)` → NoticeVersion | null — used by the proof endpoint
 - `writeAuditLog({ actorId, actorRole, action, resource, ip })` → AuditLog
 
 
@@ -40,7 +42,17 @@ Created by Ramya | Last updated: May 13, 2026
 - `getConsentStatus(principalId)` → ConsentMaster[]
   - Plain delegation to repository — no business logic
 
-actor shape: `{ id: string, role: string, ip: string }` — assembled by the controller from req.user + req.ip
+- `getConsentById(consentId, requestingUser)` → ConsentMaster with `events[]`
+  - 404 CONSENT_NOT_FOUND if record does not exist
+  - Writes AuditLog (action: 'consent.view') — see "Read-trail audit actions" below
+
+- `getConsentProof(consentId, requestingUser)` → `{ consent, events, noticeVersion }`
+  - 404 CONSENT_NOT_FOUND if record does not exist
+  - Fetches the linked NoticeVersion separately (no Prisma relation on noticeVersionId)
+  - `events` is split out of the consent object so the response shape matches API_CONTRACTS.md exactly — `consent` carries only ConsentMaster fields, `events` is the ordered ledger, `noticeVersion` is the linked notice
+  - Writes AuditLog (action: 'consent.proof.view') — see "Read-trail audit actions" below
+
+actor / requestingUser shape: `{ id: string, role: string, ip: string }` — assembled by the controller from req.user + req.ip. Ramya's mutating handlers call the local var `actor`; Sujaa's read handlers call it `requestingUser`. Same shape, different name.
 
 
 ### controller.js
@@ -48,6 +60,8 @@ actor shape: `{ id: string, role: string, ip: string }` — assembled by the con
 - `capture(req, res)` — POST /consent/capture — Zod-validates body, calls service.captureConsent, 201 on success
 - `withdraw(req, res)` — DELETE /consent/:id/withdraw — extracts req.params.id, calls service.withdrawConsent, 200 on success
 - `getStatus(req, res)` — GET /consent/status/:principalId — extracts req.params.principalId, calls service.getConsentStatus, 200 on success
+- `getById(req, res)` — GET /consent/:id — extracts req.params.id, builds requestingUser, calls service.getConsentById, 200 on success
+- `getProof(req, res)` — GET /consent/proof/:consentId — extracts req.params.consentId, builds requestingUser, calls service.getConsentProof, 200 on success
 
 Zod errors are formatted as `"field.path: message; field.path: message"` with code VALIDATION_ERROR.
 
@@ -63,14 +77,17 @@ Zod errors are formatted as `"field.path: message; field.path: message"` with co
   - `expiresAt`: ISO 8601 datetime string with timezone offset, optional
 
 
-### router.js — All routes (Ramya's)
+### router.js — All routes
 
-- POST   /consent/capture            — auth + rbac('consent:write')
-- DELETE /consent/:id/withdraw       — auth + rbac('consent:write')
-- GET    /consent/status/:principalId — auth + rbac('consent:read')
+- POST   /consent/capture             — auth + rbac('consent:write')   (Ramya)
+- DELETE /consent/:id/withdraw        — auth + rbac('consent:write')   (Ramya)
+- GET    /consent/status/:principalId — auth + rbac('consent:read')    (Ramya)
+- GET    /consent/proof/:consentId    — auth + rbac('consent:read')    (Sujaa)
+- GET    /consent/:id                 — auth + rbac('consent:read')    (Sujaa)
 
-Note: DELETE uses consent:write (not consent:delete) so that USER role can withdraw their own consent.
-Sujaa's two routes are commented out at the bottom of router.js.
+Notes:
+- DELETE uses consent:write (not consent:delete) so that USER role can withdraw their own consent.
+- Route ordering matters: the specific-prefix GETs (`/status/:principalId`, `/proof/:consentId`) must be declared **before** the catch-all `/:id`, otherwise Express will match `/status` and `/proof` as values of `:id`.
 
 
 ## SHA-256 hash algorithm
@@ -114,12 +131,16 @@ const hash = createHash('sha256').update(JSON.stringify(payload)).digest('hex')
 | DPO_ADMIN, DPO_OPS, AUDITOR, other | ADMIN                 |
 
 
-## What Sujaa needs to add
+## Read-trail audit actions
 
-1. In `controller.js` — add handlers: `getById(req, res)` and `getProof(req, res)`
-2. In `router.js` — uncomment and wire up the two stubbed routes at the bottom
-3. Both routes need `repo.findConsentById` which already exists in repository.js
-4. For proof endpoint, include events via Prisma `include: { events: true }` — add a new repo function if needed
+The project-level rule in the root `CLAUDE.md` says "every POST/PATCH/DELETE must write to AuditLog". Sujaa's read endpoints **deliberately extend this** and also write AuditLog rows, because viewing a regulatory-proof chain is itself a DPDPA-relevant action that should be auditable.
+
+| Endpoint                       | AuditLog action       |
+|--------------------------------|-----------------------|
+| GET /consent/:id               | `consent.view`        |
+| GET /consent/proof/:consentId  | `consent.proof.view`  |
+
+This is the only deviation from the "mutations only" rule in this module. Ramya's `capture` and `withdraw` continue to write `consent.capture` and `consent.withdraw` as before.
 
 
 ## Import paths from this module
@@ -131,11 +152,11 @@ import * as service from './service.js'
 import { captureConsentSchema } from './validation.js'
 
 // Middleware (used in router.js)
-import auth from '../../../middleware/auth.js'
-import rbac from '../../../middleware/rbac.js'
+import auth from '../../middleware/auth.js'
+import rbac from '../../middleware/rbac.js'
 
 // Prisma singleton (used in repository.js only)
-import prisma from '../../../lib/prisma.js'
+import prisma from '../../lib/prisma.js'
 ```
 
 
