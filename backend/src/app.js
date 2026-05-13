@@ -7,7 +7,7 @@ import authRouter from './modules/auth/router.js'
 
 // ── Stub imports (others fill these in on their branches) ─────────────────────
 import consentRouter    from './modules/consent/router.js'
-// import complaintsRouter from './modules/complaints/router.js'
+import complaintsRouter from './modules/complaints/router.js'
 // import dashboardRouter  from './modules/dashboard/router.js'
 
 const app  = express()
@@ -40,7 +40,8 @@ app.use('/auth', authRouter)
 app.use('/consent', consentRouter)
 
 // Uncomment as each member pushes their module
-// app.use('/complaints', complaintsRouter)
+// app.use('/consent',    consentRouter)
+app.use('/complaints', complaintsRouter)
 // app.use('/dashboard',  dashboardRouter)
 
 // ── Health checks ─────────────────────────────────────────────────────────────
