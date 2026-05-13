@@ -16,6 +16,14 @@ export async function captureConsent(
   { dataPrincipalId, purposes, language, noticeVersionId, source, expiresAt },
   actor
 ) {
+  // Guard: USER role can only capture consent for themselves
+  if (actor.role === 'USER' && dataPrincipalId !== actor.id) {
+    const err = new Error('You can only capture consent for your own account')
+    err.code = 'FORBIDDEN'
+    err.status = 403
+    throw err
+  }
+
   // 1. Validate every purpose ID is active in PurposeCatalog
   const purposeIds = purposes.map((p) => p.purposeId)
   const validPurposes = await repo.findActivePurposesByIds(purposeIds)
@@ -90,6 +98,14 @@ export async function withdrawConsent(consentId, actor) {
     throw err
   }
 
+  // 3. Guard: USER role can only withdraw their own consent
+  if (actor.role === 'USER' && existing.dataPrincipalId !== actor.id) {
+    const err = new Error('You can only withdraw your own consent')
+    err.code = 'FORBIDDEN'
+    err.status = 403
+    throw err
+  }
+
   // 3. Update status — repository touches only the status field
   const updated = await repo.withdrawConsent(consentId)
 
@@ -128,7 +144,14 @@ export async function withdrawConsent(consentId, actor) {
   return updated
 }
 
-export async function getConsentStatus(principalId) {
+export async function getConsentStatus(principalId, requestingUser) {
+  // Guard: USER role can only see their own status
+  if (requestingUser.role === 'USER' && principalId !== requestingUser.id) {
+    const err = new Error('You can only view your own consent status')
+    err.code = 'FORBIDDEN'
+    err.status = 403
+    throw err
+  }
   return repo.getConsentByPrincipalId(principalId)
 }
 
@@ -138,6 +161,14 @@ export async function getConsentById(consentId, requestingUser) {
     const err = new Error('Consent record not found')
     err.code = 'CONSENT_NOT_FOUND'
     err.status = 404
+    throw err
+  }
+
+  // Guard: USER role can only view their own consent
+  if (requestingUser.role === 'USER' && consent.dataPrincipalId !== requestingUser.id) {
+    const err = new Error('Access denied to this consent record')
+    err.code = 'FORBIDDEN'
+    err.status = 403
     throw err
   }
 
@@ -158,6 +189,14 @@ export async function getConsentProof(consentId, requestingUser) {
     const err = new Error('Consent record not found')
     err.code = 'CONSENT_NOT_FOUND'
     err.status = 404
+    throw err
+  }
+
+  // Guard: USER role can only view their own proof
+  if (requestingUser.role === 'USER' && consentWithEvents.dataPrincipalId !== requestingUser.id) {
+    const err = new Error('Access denied to this consent proof')
+    err.code = 'FORBIDDEN'
+    err.status = 403
     throw err
   }
 

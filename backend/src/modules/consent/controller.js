@@ -42,7 +42,8 @@ export async function withdraw(req, res) {
 export async function getStatus(req, res) {
   try {
     const { principalId } = req.params
-    const records = await service.getConsentStatus(principalId)
+    const requestingUser = { id: req.user.id, role: req.user.role, ip: req.ip || 'unknown' }
+    const records = await service.getConsentStatus(principalId, requestingUser)
     return res.status(200).json({ success: true, data: records, message: 'Consent status retrieved' })
   } catch (err) {
     return res.status(err.status || 500).json({
