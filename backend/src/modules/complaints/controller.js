@@ -13,7 +13,8 @@ const fileComplaint = async (req, res) => {
       })
     }
 
-    const complaint = await service.fileComplaint(parsed.data)
+    const actor = { id: req.user.id, role: req.user.role, ip: req.ip || 'unknown' }
+    const complaint = await service.fileComplaint(parsed.data, actor)
 
     return res.status(201).json({
       success: true,
@@ -89,7 +90,8 @@ const updateStatus = async (req, res) => {
       })
     }
 
-    const complaint = await service.updateStatus(req.params.id, parsed.data.status)
+    const actor = { id: req.user.id, role: req.user.role, ip: req.ip || 'unknown' }
+    const complaint = await service.updateStatus(req.params.id, parsed.data.status, actor)
 
     return res.status(200).json({
       success: true,
@@ -116,7 +118,8 @@ const assignComplaint = async (req, res) => {
       })
     }
 
-    const complaint = await service.assignComplaint(req.params.id, parsed.data.assignedTo)
+    const actor = { id: req.user.id, role: req.user.role, ip: req.ip || 'unknown' }
+    const complaint = await service.assignComplaint(req.params.id, parsed.data.assignedTo, actor)
 
     return res.status(200).json({
       success: true,

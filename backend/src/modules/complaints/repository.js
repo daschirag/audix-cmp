@@ -44,9 +44,22 @@ const updateComplaint = async (id, data) => {
   })
 }
 
+const writeAuditLog = async ({ actorId, actorRole, action, resource, ip }) => {
+  return await prisma.auditLog.create({
+    data: {
+      actorId,
+      actorRole,
+      action,
+      resource: resource ?? null,
+      ip: ip ?? 'unknown',
+    },
+  })
+}
+
 export default {
   createComplaint,
   findComplaints,
   findComplaintById,
-  updateComplaint
+  updateComplaint,
+  writeAuditLog
 }
