@@ -1,8 +1,9 @@
 import Redis from 'ioredis'
 
-const redis = new Redis({
+const createClient = (db = 0) => new Redis({
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT) || 6379,
+  db,
   retryStrategy: (times) => {
     if (times > 3) {
       console.error('Redis connection failed after 3 retries')
@@ -12,6 +13,17 @@ const redis = new Redis({
   }
 })
 
+// DB0 = sessions
+export const sessionDB   = createClient(0)
+
+// DB1 = JWT blacklist
+export const blacklistDB = createClient(1)
+
+// DB2 = refresh tokens + one-time tokens
+export const tokenDB     = createClient(2)
+
+const redis = sessionDB
+
 redis.on('connect', () => {
   console.log('✅ Redis connected')
 })
@@ -19,13 +31,5 @@ redis.on('connect', () => {
 redis.on('error', (err) => {
   console.error('❌ Redis error:', err.message)
 })
-
-// DB0 = sessions
-// DB1 = token blacklist (JTI)
-// DB2 = refresh tokens
-
-export const sessionDB   = redis
-export const blacklistDB = redis.createConnectedClient ? redis : new Redis({ host: process.env.REDIS_HOST || 'localhost', port: parseInt(process.env.REDIS_PORT) || 6379, db: 1 })
-export const tokenDB     = new Redis({ host: process.env.REDIS_HOST || 'localhost', port: parseInt(process.env.REDIS_PORT) || 6379, db: 2 })
 
 export default redis

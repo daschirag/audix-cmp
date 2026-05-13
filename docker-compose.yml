@@ -1,7 +1,5 @@
 version: '3.8'
-
 services:
-
   # ── MongoDB ───────────────────────────────────────────────────────────────
   mongodb:
     image: mongo:7
@@ -13,12 +11,13 @@ services:
       MONGO_INITDB_DATABASE: cmp
     volumes:
       - mongodb-data:/data/db
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 15s
 
   # ── Redis ─────────────────────────────────────────────────────────────────
   redis:
@@ -47,16 +46,16 @@ services:
     ports:
       - "3001:3001"
     environment:
-      NODE_ENV:               development
-      PORT:                   3001
-      DATABASE_URL:           mongodb://mongodb:27017/cmp
-      JWT_SECRET:             ${JWT_SECRET}
-      JWT_EXPIRES_IN:         15m
+      NODE_ENV:                 development
+      PORT:                     3001
+      DATABASE_URL:             mongodb://mongodb:27017/cmp?replicaSet=rs0&directConnection=true
+      JWT_SECRET:               ${JWT_SECRET}
+      JWT_EXPIRES_IN:           15m
       REFRESH_TOKEN_EXPIRES_IN: 7d
-      REDIS_HOST:             redis
-      REDIS_PORT:             6379
-      BCRYPT_ROUNDS:          12
-      FRONTEND_URL:           http://localhost:3000
+      REDIS_HOST:               redis
+      REDIS_PORT:               6379
+      BCRYPT_ROUNDS:            12
+      FRONTEND_URL:             http://localhost:3000
     depends_on:
       mongodb:
         condition: service_healthy

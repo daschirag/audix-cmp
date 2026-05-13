@@ -1,4 +1,4 @@
-import prisma from '../../../lib/prisma.js'
+import prisma from '../../lib/prisma.js'
 
 const findUserByEmail = async (email) => {
   return await prisma.user.findUnique({

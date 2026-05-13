@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { v4 as uuidv4 } from 'uuid'
-import { tokenDB } from '../../../lib/redis.js'
+import { tokenDB } from '../../lib/redis.js'
 import repository from './repository.js'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
