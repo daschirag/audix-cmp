@@ -110,4 +110,50 @@ const login = async ({ email, password }, ip) => {
   }
 }
 
-export default { register, login, generateAccessToken, generateRefreshToken, REFRESH_TTL_SECONDS }
+const refresh = async (refreshToken, ip) => {
+  const keys = await tokenDB.keys('refresh:*')
+  let userId = null
+  
+  for (const key of keys) {
+    const stored = await tokenDB.get(key)
+    if (stored === refreshToken) {
+      userId = key.split(':')[1]
+      break
+    }
+  }
+
+  if (!userId) {
+    const err = new Error('Invalid refresh token')
+    err.code   = 'INVALID_REFRESH_TOKEN'
+    err.status = 401
+    throw err
+  }
+
+  const user = await repository.findUserById(userId)
+  if (!user) {
+    const err = new Error('User not found')
+    err.status = 404
+    throw err
+  }
+
+  const newAccessToken  = generateAccessToken(user)
+  const newRefreshToken = generateRefreshToken()
+
+  await tokenDB.set(`refresh:${user.id}`, newRefreshToken, 'EX', REFRESH_TTL_SECONDS)
+
+  return { accessToken: newAccessToken, refreshToken: newRefreshToken }
+}
+
+const logout = async (userId) => {
+  await tokenDB.del(`refresh:${userId}`)
+}
+
+export default { 
+  register, 
+  login, 
+  refresh, 
+  logout, 
+  generateAccessToken, 
+  generateRefreshToken, 
+  REFRESH_TTL_SECONDS 
+}

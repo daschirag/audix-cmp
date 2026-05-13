@@ -45,9 +45,11 @@ enum ActorType {
 model User {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   email        String   @unique
+  passwordHash String
   mobile       String?
   name         String?
   age          Int?
+  role         String   @default("USER")
   isMinor      Boolean  @default(false)
   guardianId   String?  @db.ObjectId
 
@@ -149,17 +151,17 @@ model Complaint {
   id                String   @id @default(auto()) @map("_id") @db.ObjectId
 
   dataPrincipalId   String   @db.ObjectId
-  consentId         String   @db.ObjectId
+  consentId         String?  @db.ObjectId
 
-  category          String
+  subject           String
   description       String?
 
-  status            ComplaintStatus
+  status            ComplaintStatus @default(RECEIVED)
 
   assignedTo        String?
 
+  category          String?
   sla               Json?
-
   evidence          Json?
 
   createdAt         DateTime @default(now())
