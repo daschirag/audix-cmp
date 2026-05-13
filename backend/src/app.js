@@ -6,7 +6,7 @@ import prisma from './lib/prisma.js'
 import authRouter from './modules/auth/router.js'
 
 // ── Stub imports (others fill these in on their branches) ─────────────────────
-// import consentRouter    from './modules/consent/router.js'
+import consentRouter    from './modules/consent/router.js'
 import complaintsRouter from './modules/complaints/router.js'
 // import dashboardRouter  from './modules/dashboard/router.js'
 
@@ -37,6 +37,7 @@ app.use(rateLimit({
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 app.use('/auth', authRouter)
+app.use('/consent', consentRouter)
 
 // Uncomment as each member pushes their module
 // app.use('/consent',    consentRouter)
