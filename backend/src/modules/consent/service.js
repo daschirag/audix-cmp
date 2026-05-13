@@ -132,18 +132,7 @@ export async function getConsentStatus(principalId) {
   return repo.getConsentByPrincipalId(principalId)
 }
 
-export async function getConsentById(consentId) {
-  const consent = await repo.findConsentById(consentId)
-  if (!consent) {
-    const err = new Error('Consent record not found')
-    err.code = 'CONSENT_NOT_FOUND'
-    err.status = 404
-    throw err
-  }
-  return consent
-}
-
-export async function getConsentProof(consentId) {
+export async function getConsentById(consentId, requestingUser) {
   const consent = await repo.findConsentWithEvents(consentId)
   if (!consent) {
     const err = new Error('Consent record not found')
@@ -151,5 +140,37 @@ export async function getConsentProof(consentId) {
     err.status = 404
     throw err
   }
+
+  await repo.writeAuditLog({
+    actorId: requestingUser.id,
+    actorRole: requestingUser.role,
+    action: 'consent.view',
+    resource: { collection: 'ConsentMaster', id: consent.id },
+    ip: requestingUser.ip,
+  })
+
   return consent
+}
+
+export async function getConsentProof(consentId, requestingUser) {
+  const consentWithEvents = await repo.findConsentWithEvents(consentId)
+  if (!consentWithEvents) {
+    const err = new Error('Consent record not found')
+    err.code = 'CONSENT_NOT_FOUND'
+    err.status = 404
+    throw err
+  }
+
+  const noticeVersion = await repo.findNoticeVersionById(consentWithEvents.noticeVersionId)
+
+  await repo.writeAuditLog({
+    actorId: requestingUser.id,
+    actorRole: requestingUser.role,
+    action: 'consent.proof.view',
+    resource: { collection: 'ConsentMaster', id: consentWithEvents.id },
+    ip: requestingUser.ip,
+  })
+
+  const { events, ...consent } = consentWithEvents
+  return { consent, events, noticeVersion }
 }

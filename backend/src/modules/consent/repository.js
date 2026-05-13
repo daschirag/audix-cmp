@@ -1,4 +1,4 @@
-import prisma from '../../../lib/prisma.js'
+import prisma from '../../lib/prisma.js'
 
 export async function createConsent(data) {
   return prisma.consentMaster.create({ data })
@@ -32,7 +32,7 @@ export async function findConsentById(id) {
 export async function findConsentWithEvents(id) {
   return prisma.consentMaster.findUnique({
     where: { id },
-    include: { events: true },
+    include: { events: { orderBy: { timestamp: 'asc' } } },
   })
 }
 
@@ -52,4 +52,9 @@ export async function writeAuditLog({ actorId, actorRole, action, resource, ip }
       ip: ip ?? 'unknown',
     },
   })
+}
+
+export async function findNoticeVersionById(id) {
+  if (!prisma.noticeVersion) return null
+  return prisma.noticeVersion.findUnique({ where: { id } })
 }

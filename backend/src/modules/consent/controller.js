@@ -56,7 +56,8 @@ export async function getStatus(req, res) {
 export async function getById(req, res) {
   try {
     const { id } = req.params
-    const consent = await service.getConsentById(id)
+    const requestingUser = { id: req.user.id, role: req.user.role, ip: req.ip || 'unknown' }
+    const consent = await service.getConsentById(id, requestingUser)
     return res.status(200).json({ success: true, data: consent, message: 'Consent record retrieved' })
   } catch (err) {
     return res.status(err.status || 500).json({
@@ -70,7 +71,8 @@ export async function getById(req, res) {
 export async function getProof(req, res) {
   try {
     const { consentId } = req.params
-    const proof = await service.getConsentProof(consentId)
+    const requestingUser = { id: req.user.id, role: req.user.role, ip: req.ip || 'unknown' }
+    const proof = await service.getConsentProof(consentId, requestingUser)
     return res.status(200).json({ success: true, data: proof, message: 'Consent proof retrieved' })
   } catch (err) {
     return res.status(err.status || 500).json({
