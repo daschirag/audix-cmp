@@ -13,6 +13,9 @@ jest.mock('../src/lib/prisma.js', () => ({
       findUnique: jest.fn(() => Promise.resolve({ id: '507f1f77bcf86cd799439012', status: 'RECEIVED', dataPrincipalId: '507f1f77bcf86cd799439011' })),
       update: jest.fn(() => Promise.resolve({ id: '507f1f77bcf86cd799439012', status: 'UNDER_REVIEW' }))
     },
+    auditLog: {
+      create: jest.fn(() => Promise.resolve({ id: 'audit-id' }))
+    },
     $connect: jest.fn(() => Promise.resolve())
   }
 }))
@@ -24,7 +27,8 @@ jest.mock('../src/middleware/auth.js', () => ({
     if (!req.headers.authorization) {
       return res.status(401).json({ success: false, message: 'No token' })
     }
-    req.user = { id: '507f1f77bcf86cd799439011', role: 'USER' }
+    // Using DPO_OPS so it passes rbac('complaints:write')
+    req.user = { id: '507f1f77bcf86cd799439011', role: 'DPO_OPS' }
     next()
   })
 }))
