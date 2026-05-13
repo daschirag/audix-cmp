@@ -87,7 +87,7 @@ export const refresh = async (req, res) => {
 export const logout = async (req, res) => {
   try {
     // userId should be extracted from auth middleware (req.user)
-    const userId = req.user?.userId
+    const userId = req.user?.id
     const { refreshToken } = req.body
 
     if (userId) {
