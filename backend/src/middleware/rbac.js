@@ -32,6 +32,7 @@ const ROLE_PERMISSIONS = {
   USER: [
     'consent:read',
     'consent:write',
+    'complaints:read',
   ],
 }
 

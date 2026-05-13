@@ -1,7 +1,24 @@
 import repository from './repository.js'
 
-const fileComplaint = async (complaintData) => {
-  return await repository.createComplaint(complaintData)
+const VALID_TRANSITIONS = {
+  RECEIVED: ['UNDER_REVIEW'],
+  UNDER_REVIEW: ['ESCALATED', 'CLOSED'],
+  ESCALATED: ['CLOSED'],
+  CLOSED: []
+}
+
+const fileComplaint = async (complaintData, actor) => {
+  const complaint = await repository.createComplaint(complaintData)
+  
+  await repository.writeAuditLog({
+    actorId: actor.id,
+    actorRole: actor.role,
+    action: 'complaint.create',
+    resource: { collection: 'Complaint', id: complaint.id },
+    ip: actor.ip
+  })
+
+  return complaint
 }
 
 const listComplaints = async (filters) => {
@@ -19,12 +36,43 @@ const getComplaintDetails = async (id) => {
   return complaint
 }
 
-const updateStatus = async (id, status) => {
-  return await repository.updateComplaint(id, { status })
+const updateStatus = async (id, newStatus, actor) => {
+  const complaint = await getComplaintDetails(id)
+  const currentStatus = complaint.status
+
+  const allowed = VALID_TRANSITIONS[currentStatus] || []
+  if (!allowed.includes(newStatus)) {
+    const error = new Error(`Invalid status transition: ${currentStatus} -> ${newStatus}`)
+    error.status = 422
+    error.code = 'INVALID_TRANSITION'
+    throw error
+  }
+
+  const updated = await repository.updateComplaint(id, { status: newStatus })
+
+  await repository.writeAuditLog({
+    actorId: actor.id,
+    actorRole: actor.role,
+    action: 'complaint.status_update',
+    resource: { collection: 'Complaint', id: updated.id, status: newStatus },
+    ip: actor.ip
+  })
+
+  return updated
 }
 
-const assignComplaint = async (id, assignedTo) => {
-  return await repository.updateComplaint(id, { assignedTo })
+const assignComplaint = async (id, assignedTo, actor) => {
+  const updated = await repository.updateComplaint(id, { assignedTo })
+
+  await repository.writeAuditLog({
+    actorId: actor.id,
+    actorRole: actor.role,
+    action: 'complaint.assign',
+    resource: { collection: 'Complaint', id: updated.id, assignedTo },
+    ip: actor.ip
+  })
+
+  return updated
 }
 
 export default {

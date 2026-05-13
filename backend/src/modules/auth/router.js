@@ -26,7 +26,7 @@ const loginLimiter = rateLimit({
 router.post('/register', controller.register)
 router.post('/login',    loginLimiter, controller.login)
 router.post('/refresh',  controller.refresh)
-router.post('/logout',   controller.logout)
+router.post('/logout',   auth, controller.logout)
 
 // ── OAuth2 Google Stub ────────────────────────────────────────────────────────
 
