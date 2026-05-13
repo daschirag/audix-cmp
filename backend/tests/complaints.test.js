@@ -1,3 +1,34 @@
+import { jest } from '@jest/globals'
+
+// Mock Prisma BEFORE importing app
+const mockUserId = '507f1f77bcf86cd799439011'
+const mockCompId = '507f1f77bcf86cd799439012'
+
+jest.mock('../src/lib/prisma.js', () => ({
+  __esModule: true,
+  default: {
+    complaint: {
+      create: jest.fn(() => Promise.resolve({ id: '507f1f77bcf86cd799439012', status: 'RECEIVED' })),
+      findMany: jest.fn(() => Promise.resolve([{ id: '507f1f77bcf86cd799439012', status: 'RECEIVED' }])),
+      findUnique: jest.fn(() => Promise.resolve({ id: '507f1f77bcf86cd799439012', status: 'RECEIVED', dataPrincipalId: '507f1f77bcf86cd799439011' })),
+      update: jest.fn(() => Promise.resolve({ id: '507f1f77bcf86cd799439012', status: 'UNDER_REVIEW' }))
+    },
+    $connect: jest.fn(() => Promise.resolve())
+  }
+}))
+
+// Mock auth middleware
+jest.mock('../src/middleware/auth.js', () => ({
+  __esModule: true,
+  default: jest.fn((req, res, next) => {
+    if (!req.headers.authorization) {
+      return res.status(401).json({ success: false, message: 'No token' })
+    }
+    req.user = { id: '507f1f77bcf86cd799439011', role: 'USER' }
+    next()
+  })
+}))
+
 import request from 'supertest'
 import app from '../src/app.js'
 
@@ -12,7 +43,7 @@ describe('Complaints Module', () => {
 
     it('should file a complaint successfully', async () => {
       const payload = {
-        dataPrincipalId: 'user-123',
+        dataPrincipalId: '507f1f77bcf86cd799439011',
         subject: 'Privacy Inquiry',
         description: 'How is my data shared?'
       }
@@ -36,7 +67,7 @@ describe('Complaints Module', () => {
   describe('GET /complaints/:id', () => {
     it('should fetch details', async () => {
       const res = await request(app)
-        .get('/complaints/comp-123')
+        .get(`/complaints/${mockCompId}`)
         .set('Authorization', `Bearer ${mockAccessToken}`)
       expect(res.status).toBe(200)
     })
@@ -45,7 +76,7 @@ describe('Complaints Module', () => {
   describe('PATCH /complaints/:id/status', () => {
     it('should update status', async () => {
       const res = await request(app)
-        .patch('/complaints/comp-123/status')
+        .patch(`/complaints/${mockCompId}/status`)
         .set('Authorization', `Bearer ${mockAccessToken}`)
         .send({ status: 'UNDER_REVIEW' })
       expect(res.status).toBe(200)
@@ -55,7 +86,7 @@ describe('Complaints Module', () => {
   describe('PATCH /complaints/:id/assign', () => {
     it('should assign complaint', async () => {
       const res = await request(app)
-        .patch('/complaints/comp-123/assign')
+        .patch(`/complaints/${mockCompId}/assign`)
         .set('Authorization', `Bearer ${mockAccessToken}`)
         .send({ assignedTo: 'agent-456' }) // Matches API_CONTRACTS.md field name
       expect(res.status).toBe(200)
