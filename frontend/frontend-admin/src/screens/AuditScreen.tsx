@@ -14,6 +14,28 @@ interface AuditLog {
   timestamp: string
 }
 
+function parseResource(resource: string | null): string {
+  if (!resource) return '—'
+  try {
+    const parsed = JSON.parse(resource)
+    if (parsed.collection && parsed.id)
+      return `${parsed.collection} — ${parsed.id.slice(-8).toUpperCase()}`
+    if (parsed.cmpAdmin !== undefined)
+      return 'Access control settings updated'
+    const keys = Object.keys(parsed)
+    if (keys.length > 0)
+      return `${keys[0]}: ${String(parsed[keys[0]]).slice(0, 40)}`
+    return '—'
+  } catch {
+    return resource.slice(0, 60)
+  }
+}
+
+function formatIP(ip: string): string {
+  if (ip === '::1' || ip === '::ffff:127.0.0.1') return '127.0.0.1 (local)'
+  return ip.replace('::ffff:', '')
+}
+
 export default function AuditScreen() {
   const [logs, setLogs]         = useState<AuditLog[]>([])
   const [loading, setLoading]   = useState(true)
@@ -36,14 +58,14 @@ export default function AuditScreen() {
   const actionOptions = ['All Actions', ...Array.from(new Set(logs.map(l => l.action)))]
 
   const filtered = logs.filter((log) => {
-    const matchSearch  = !search ||
+    const matchSearch = !search ||
       log.actorId.toLowerCase().includes(search.toLowerCase()) ||
       log.action.toLowerCase().includes(search.toLowerCase()) ||
       (log.resource || '').toLowerCase().includes(search.toLowerCase())
-    const matchAction  = actionFilter === 'All Actions' || log.action === actionFilter
-    const logDate      = log.timestamp.split('T')[0]
-    const matchFrom    = !dateFrom || logDate >= dateFrom
-    const matchTo      = !dateTo   || logDate <= dateTo
+    const matchAction = actionFilter === 'All Actions' || log.action === actionFilter
+    const logDate     = log.timestamp.split('T')[0]
+    const matchFrom   = !dateFrom || logDate >= dateFrom
+    const matchTo     = !dateTo   || logDate <= dateTo
     return matchSearch && matchAction && matchFrom && matchTo
   })
 
@@ -51,9 +73,11 @@ export default function AuditScreen() {
     const headers = ['Timestamp', 'Actor ID', 'Role', 'Action', 'Resource', 'IP']
     const rows    = filtered.map(l => [
       new Date(l.timestamp).toLocaleString(),
-      l.actorId, l.actorRole, l.action,
-      l.resource ? l.resource.slice(0, 80) : '',
-      l.ip
+      l.actorId.slice(-8).toUpperCase(),
+      l.actorRole,
+      l.action,
+      parseResource(l.resource),
+      formatIP(l.ip)
     ])
     const csv  = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -82,7 +106,7 @@ export default function AuditScreen() {
         <p>Generated: ${new Date().toLocaleString()} | Total Records: ${filtered.length}</p>
         <table>
           <thead><tr>
-            <th>Timestamp</th><th>Actor ID</th><th>Role</th><th>Action</th><th>IP</th>
+            <th>Timestamp</th><th>Actor ID</th><th>Role</th><th>Action</th><th>Resource</th><th>IP</th>
           </tr></thead>
           <tbody>
             ${filtered.map(l => `<tr>
@@ -90,7 +114,8 @@ export default function AuditScreen() {
               <td>${l.actorId.slice(-8).toUpperCase()}</td>
               <td>${l.actorRole}</td>
               <td>${l.action}</td>
-              <td>${l.ip}</td>
+              <td>${parseResource(l.resource)}</td>
+              <td>${formatIP(l.ip)}</td>
             </tr>`).join('')}
           </tbody>
         </table>
@@ -102,8 +127,8 @@ export default function AuditScreen() {
     if (win) win.onload = () => { win.print(); URL.revokeObjectURL(url) }
   }
 
-  const today       = new Date().toISOString().split('T')[0]
-  const todayCount  = logs.filter(l => l.timestamp.startsWith(today)).length
+  const today        = new Date().toISOString().split('T')[0]
+  const todayCount   = logs.filter(l => l.timestamp.startsWith(today)).length
   const uniqueActors = new Set(logs.map(l => l.actorId)).size
   const criticalAct  = logs.filter(l => l.action.includes('access.control')).length
   const failedLogin  = logs.filter(l => l.action.includes('failed')).length
@@ -152,8 +177,7 @@ export default function AuditScreen() {
               className="px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none bg-white">
               {actionOptions.map((a) => <option key={a}>{a}</option>)}
             </select>
-            <button
-              className="flex items-center gap-2 px-4 py-2.5 text-white text-sm rounded-xl"
+            <button className="flex items-center gap-2 px-4 py-2.5 text-white text-sm rounded-xl"
               style={{ backgroundColor: '#00C4B4' }}>
               <Filter className="w-4 h-4" /> Apply
             </button>
@@ -199,9 +223,9 @@ export default function AuditScreen() {
                   <td className="px-6 py-4 text-sm text-gray-600">{log.actorRole}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{log.action}</td>
                   <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                    {log.resource ? log.resource.slice(0, 60) + (log.resource.length > 60 ? '...' : '') : '—'}
+                    {parseResource(log.resource)}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{log.ip}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{formatIP(log.ip)}</td>
                 </tr>
               ))}
             </tbody>
