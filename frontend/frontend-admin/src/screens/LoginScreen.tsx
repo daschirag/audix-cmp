@@ -5,12 +5,40 @@ import { Eye, EyeOff } from 'lucide-react'
 export default function LoginScreen() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail] = useState('')
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError]       = useState('')
+  const [loading, setLoading]   = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    navigate('/dashboard')
+    setError('')
+    setLoading(true)
+
+    try {
+      const res = await fetch('http://localhost:3001/auth/login', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email, password })
+      })
+
+      const data = await res.json()
+
+      if (!data.success) {
+        setError(data.message || 'Login failed')
+        setLoading(false)
+        return
+      }
+
+      sessionStorage.setItem('accessToken', data.data.accessToken)
+      sessionStorage.setItem('user', JSON.stringify(data.data.user))
+      setLoading(false)
+      navigate('/dashboard')
+
+    } catch (err) {
+      setError('Cannot connect to server. Make sure backend is running on port 3001.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -20,10 +48,7 @@ export default function LoginScreen() {
     >
       <div
         className="bg-white rounded-2xl p-10"
-        style={{
-          width: 480,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-        }}
+        style={{ width: 480, boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
       >
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
@@ -43,15 +68,14 @@ export default function LoginScreen() {
           {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Email or Mobile
+              Email
             </label>
             <input
               type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email or mobile"
+              placeholder="Enter your email"
               className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent"
-              style={{ '--tw-ring-color': '#00C4B4' } as React.CSSProperties}
             />
           </div>
 
@@ -89,15 +113,27 @@ export default function LoginScreen() {
             </button>
           </div>
 
+          {/* Error message */}
+          {error && (
+            <div className="text-red-500 text-sm text-center bg-red-50 py-2 px-4 rounded-lg">
+              {error}
+            </div>
+          )}
+
           {/* Submit */}
           <button
             type="submit"
+            disabled={loading}
             className="w-full py-3 text-white font-medium rounded-xl transition-colors"
-            style={{ backgroundColor: '#00C4B4' }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#00B3A3')}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#00C4B4')}
+            style={{ backgroundColor: loading ? '#9CA3AF' : '#00C4B4' }}
+            onMouseEnter={(e) => {
+              if (!loading) e.currentTarget.style.backgroundColor = '#00B3A3'
+            }}
+            onMouseLeave={(e) => {
+              if (!loading) e.currentTarget.style.backgroundColor = '#00C4B4'
+            }}
           >
-            Sign In
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 

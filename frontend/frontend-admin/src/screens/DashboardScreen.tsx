@@ -197,7 +197,7 @@ export default function DashboardScreen() {
   const navigate = useNavigate()
 
   // ── Auth token — swap localStorage for your own auth mechanism if needed
-  const [accessToken] = useState<string | null>(() => localStorage.getItem('accessToken'))
+  const [accessToken] = useState<string | null>(() => sessionStorage.getItem('accessToken'))
 
   // ── UI state
   const [activeSearchTab, setActiveSearchTab] = useState('Mobile')
@@ -252,7 +252,7 @@ export default function DashboardScreen() {
     try {
       const res = await fetch(`${BASE_URL}/dashboard/summary`, { headers: authHeaders() })
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-      setSummary(await res.json())
+      setSummary((await res.json()).data)
     } catch (err) {
       setSummaryError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
@@ -267,7 +267,7 @@ export default function DashboardScreen() {
     try {
       const res = await fetch(`${BASE_URL}/dashboard/purpose-distribution`, { headers: authHeaders() })
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-      setPurposeData(await res.json())
+      setPurposeData((await res.json()).data)
     } catch (err) {
       setPurposeError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
@@ -282,7 +282,7 @@ export default function DashboardScreen() {
     try {
       const res = await fetch(`${BASE_URL}/dashboard/channel-distribution`, { headers: authHeaders() })
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-      setChannelData(await res.json())
+      setChannelData((await res.json()).data)
     } catch (err) {
       setChannelError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
@@ -297,7 +297,7 @@ export default function DashboardScreen() {
     try {
       const res = await fetch(`${BASE_URL}/dashboard/risk-alerts`, { headers: authHeaders() })
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-      setRiskAlerts(await res.json())
+      setRiskAlerts((await res.json()).data)
     } catch (err) {
       setRiskAlertsError(err instanceof Error ? err.message : 'Unknown error')
     } finally {

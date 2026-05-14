@@ -6,6 +6,7 @@ import prisma from './lib/prisma.js'
 import authRouter       from './modules/auth/router.js'
 import consentRouter    from './modules/consent/router.js'
 import complaintsRouter from './modules/complaints/router.js'
+import dashboardRouter from './modules/dashboard/router.js'
 
 const app  = express()
 const PORT = process.env.PORT || 3001
@@ -13,7 +14,12 @@ const PORT = process.env.PORT || 3001
 // ── Global middleware ─────────────────────────────────────────────────────────
 
 app.use(cors({
-  origin:      process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:4173',
+  ],
   credentials: true
 }))
 
@@ -23,7 +29,7 @@ app.use(express.urlencoded({ extended: true }))
 // Global rate limiter — 100 requests per 15 min per IP
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max:      100,
+  max:      1000,
   message: {
     success: false,
     message: 'Too many requests, please try again later',
@@ -36,6 +42,7 @@ app.use(rateLimit({
 app.use('/auth',       authRouter)
 app.use('/consent',    consentRouter)
 app.use('/complaints', complaintsRouter)
+app.use('/dashboard', dashboardRouter)
 
 // ── Health checks ─────────────────────────────────────────────────────────────
 
