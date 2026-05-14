@@ -6,10 +6,10 @@ import SuccessMessage from '../components/SuccessMessage'
 const BASE_URL = 'http://localhost:3001'
 
 const statusColors: Record<string, { bg: string; text: string; border: string }> = {
-  Open:         { bg: '#F8FAFC', text: '#334155', border: '#CBD5E1' },
-  'In Progress':{ bg: '#FFFBEB', text: '#92400E', border: '#FCD34D' },
-  Resolved:     { bg: '#ECFDF5', text: '#065F46', border: '#A7F3D0' },
-  Closed:       { bg: '#F9FAFB', text: '#374151', border: '#E5E7EB' },
+  Open:          { bg: '#F8FAFC', text: '#334155', border: '#CBD5E1' },
+  'In Progress': { bg: '#FFFBEB', text: '#92400E', border: '#FCD34D' },
+  Resolved:      { bg: '#ECFDF5', text: '#065F46', border: '#A7F3D0' },
+  Closed:        { bg: '#F9FAFB', text: '#374151', border: '#E5E7EB' },
 }
 
 const slaColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -39,26 +39,28 @@ function mapStatus(s: string): string {
   return m[s] || 'Open'
 }
 
-const owners = ['Priya M.', 'Amit K.', 'Rajesh S.', 'Sneha K.', 'Unassigned']
+const owners        = ['Priya M.', 'Amit K.', 'Rajesh S.', 'Sneha K.', 'Unassigned']
 const statusOptions = ['Open', 'In Progress', 'Resolved', 'Closed']
 type ModalType = 'assign' | 'status' | 'remarks' | 'evidence' | null
 
 export default function ComplaintsScreen() {
-  const [complaints, setComplaints]     = useState<Complaint[]>([])
-  const [loading, setLoading]           = useState(true)
-  const [selected, setSelected]         = useState<Set<string>>(new Set())
-  const [search, setSearch]             = useState('')
-  const [filterStatus, setFilterStatus] = useState('')
-  const [filterPurpose, setFilterPurpose] = useState('')
-  const [filterOwner, setFilterOwner]   = useState('')
-  const [activeModal, setActiveModal]   = useState<ModalType>(null)
+  const [complaints, setComplaints]         = useState<Complaint[]>([])
+  const [loading, setLoading]               = useState(true)
+  const [selected, setSelected]             = useState<Set<string>>(new Set())
+  const [search, setSearch]                 = useState('')
+  const [filterStatus, setFilterStatus]     = useState('')
+  const [filterPurpose, setFilterPurpose]   = useState('')
+  const [filterOwner, setFilterOwner]       = useState('')
+  const [activeModal, setActiveModal]       = useState<ModalType>(null)
   const [selectedOwner, setSelectedOwner]   = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
-  const [remarks, setRemarks]           = useState('')
-  const [uploadSuccess, setUploadSuccess] = useState(false)
-  const [successMsg, setSuccessMsg]     = useState('')
+  const [remarks, setRemarks]               = useState('')
+  const [uploadSuccess, setUploadSuccess]   = useState(false)
+  const [successMsg, setSuccessMsg]         = useState('')
+  const [showMoreFilters, setShowMoreFilters] = useState(false)
+  const [dateFrom, setDateFrom]             = useState('')
+  const [dateTo, setDateTo]                 = useState('')
 
-  // ── Fetch real complaints from backend ──────────────────────────────────
   useEffect(() => {
     const token = sessionStorage.getItem('accessToken')
     fetch(`${BASE_URL}/complaints`, {
@@ -106,14 +108,13 @@ export default function ComplaintsScreen() {
   }
 
   const filtered = complaints.filter((c) => {
-    const matchSearch =
-      !search ||
-      c.id.toLowerCase().includes(search.toLowerCase()) ||
-      c.customer.toLowerCase().includes(search.toLowerCase())
+    const matchSearch  = !search || c.id.toLowerCase().includes(search.toLowerCase()) || c.customer.toLowerCase().includes(search.toLowerCase())
     const matchStatus  = !filterStatus  || c.status  === filterStatus
     const matchPurpose = !filterPurpose || c.purpose === filterPurpose
     const matchOwner   = !filterOwner   || c.owner   === filterOwner
-    return matchSearch && matchStatus && matchPurpose && matchOwner
+    const matchFrom    = !dateFrom || c.date >= dateFrom
+    const matchTo      = !dateTo   || c.date <= dateTo
+    return matchSearch && matchStatus && matchPurpose && matchOwner && matchFrom && matchTo
   })
 
   const handleAssign = async () => {
@@ -122,19 +123,12 @@ export default function ComplaintsScreen() {
     for (const id of selected) {
       await fetch(`${BASE_URL}/complaints/${id}/assign`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ assignedTo: selectedOwner })
       })
     }
-    setComplaints(prev =>
-      prev.map(c => selected.has(c.id) ? { ...c, owner: selectedOwner } : c)
-    )
-    setSelected(new Set())
-    setActiveModal(null)
-    setSelectedOwner('')
+    setComplaints(prev => prev.map(c => selected.has(c.id) ? { ...c, owner: selectedOwner } : c))
+    setSelected(new Set()); setActiveModal(null); setSelectedOwner('')
     showSuccess(`Owner assigned to ${selected.size} complaint(s)`)
   }
 
@@ -142,44 +136,30 @@ export default function ComplaintsScreen() {
     if (!selectedStatus) return
     const token = sessionStorage.getItem('accessToken')
     const backendStatus: Record<string, string> = {
-      'Open':        'RECEIVED',
-      'In Progress': 'UNDER_REVIEW',
-      'Resolved':    'CLOSED',
-      'Closed':      'CLOSED',
+      'Open': 'RECEIVED', 'In Progress': 'UNDER_REVIEW', 'Resolved': 'CLOSED', 'Closed': 'CLOSED',
     }
     for (const id of selected) {
       await fetch(`${BASE_URL}/complaints/${id}/status`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ status: backendStatus[selectedStatus] || 'RECEIVED' })
       })
     }
-    setComplaints(prev =>
-      prev.map(c => selected.has(c.id) ? { ...c, status: selectedStatus } : c)
-    )
-    setSelected(new Set())
-    setActiveModal(null)
-    setSelectedStatus('')
+    setComplaints(prev => prev.map(c => selected.has(c.id) ? { ...c, status: selectedStatus } : c))
+    setSelected(new Set()); setActiveModal(null); setSelectedStatus('')
     showSuccess(`Status updated for ${selected.size} complaint(s)`)
   }
 
   const handleRemarks = () => {
     if (!remarks.trim()) return
-    setSelected(new Set())
-    setActiveModal(null)
-    setRemarks('')
+    setSelected(new Set()); setActiveModal(null); setRemarks('')
     showSuccess('Remarks added successfully')
   }
 
   const handleUpload = () => {
     setUploadSuccess(true)
     setTimeout(() => {
-      setUploadSuccess(false)
-      setActiveModal(null)
-      setSelected(new Set())
+      setUploadSuccess(false); setActiveModal(null); setSelected(new Set())
       showSuccess('Evidence uploaded successfully')
     }, 2000)
   }
@@ -189,27 +169,41 @@ export default function ComplaintsScreen() {
     showSuccess(`Closure proof generated for ${selected.size} complaint(s)`)
   }
 
+  const handleExportCSV = () => {
+    const headers = ['ID', 'Customer', 'Purpose', 'Date', 'Status', 'SLA', 'Owner']
+    const rows = filtered.map(c => [
+      c.id.slice(-8).toUpperCase(),
+      c.customer, c.purpose, c.date, c.status, c.sla, c.owner
+    ])
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url  = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `complaints_${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+    showSuccess('CSV exported successfully')
+  }
+
   const purposes = [...new Set(complaints.map((c) => c.purpose))]
 
   return (
     <div style={{ fontFamily: 'Inter, sans-serif', backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
       <Header />
       <main className="p-8 overflow-auto" style={{ paddingTop: 72 + 32 }}>
-        {successMsg && (
-          <SuccessMessage message={successMsg} onClose={() => setSuccessMsg('')} />
-        )}
+        {successMsg && <SuccessMessage message={successMsg} onClose={() => setSuccessMsg('')} />}
 
         {/* Filter Bar */}
         <div className="bg-white rounded-xl p-5 mb-4" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text" value={search}
-                onChange={(e) => setSearch(e.target.value)}
+              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search complaints..."
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2"
-              />
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2" />
             </div>
             <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
               className="px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none bg-white">
@@ -226,10 +220,36 @@ export default function ComplaintsScreen() {
               <option value="">All Owners</option>
               {owners.map((o) => <option key={o}>{o}</option>)}
             </select>
-            <button className="flex items-center gap-2 px-4 py-2.5 text-white text-sm rounded-xl"
-              style={{ backgroundColor: '#00C4B4' }}>
-              <Filter className="w-4 h-4" /> More Filters
-            </button>
+
+            {/* More Filters */}
+            <div className="relative">
+              <button onClick={() => setShowMoreFilters(v => !v)}
+                className="flex items-center gap-2 px-4 py-2.5 text-white text-sm rounded-xl"
+                style={{ backgroundColor: '#00C4B4' }}>
+                <Filter className="w-4 h-4" /> More Filters
+              </button>
+              {showMoreFilters && (
+                <div className="absolute right-0 top-12 bg-white border border-gray-200 rounded-xl shadow-lg p-4 z-10 w-64">
+                  <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Date Range</p>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">From</label>
+                      <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">To</label>
+                      <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none" />
+                    </div>
+                  </div>
+                  <button onClick={() => { setDateFrom(''); setDateTo(''); setShowMoreFilters(false) }}
+                    className="mt-3 w-full py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50">
+                    Clear Filters
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -239,9 +259,7 @@ export default function ComplaintsScreen() {
             <input type="checkbox"
               checked={selected.size === filtered.length && filtered.length > 0}
               onChange={toggleAll} className="w-4 h-4 rounded border-gray-300" />
-            {selected.size > 0 && (
-              <span className="text-sm text-gray-600">({selected.size} selected)</span>
-            )}
+            {selected.size > 0 && <span className="text-sm text-gray-600">({selected.size} selected)</span>}
             <div className="flex gap-2">
               {[
                 { label: 'Assign Owner',          action: () => setActiveModal('assign') },
@@ -257,7 +275,8 @@ export default function ComplaintsScreen() {
               ))}
             </div>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 text-sm border border-gray-300 rounded-xl hover:bg-gray-50">
+          <button onClick={handleExportCSV}
+            className="flex items-center gap-2 px-4 py-2 text-sm border border-gray-300 rounded-xl hover:bg-gray-50">
             <Download className="w-4 h-4" /> Export CSV
           </button>
         </div>
@@ -275,26 +294,17 @@ export default function ComplaintsScreen() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {loading ? (
-                <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-gray-500">
-                    Loading complaints...
-                  </td>
-                </tr>
+                <tr><td colSpan={9} className="px-6 py-12 text-center text-sm text-gray-500">Loading complaints...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-gray-500">
-                    No complaints found
-                  </td>
-                </tr>
+                <tr><td colSpan={9} className="px-6 py-12 text-center text-sm text-gray-500">No complaints found</td></tr>
               ) : filtered.map((complaint) => {
-                const sc   = statusColors[complaint.status]   || statusColors['Open']
-                const slac = slaColors[complaint.sla]         || slaColors['On Track']
+                const sc   = statusColors[complaint.status] || statusColors['Open']
+                const slac = slaColors[complaint.sla]       || slaColors['On Track']
                 return (
                   <tr key={complaint.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <input type="checkbox" checked={selected.has(complaint.id)}
-                        onChange={() => toggleSelect(complaint.id)}
-                        className="w-4 h-4 rounded border-gray-300" />
+                        onChange={() => toggleSelect(complaint.id)} className="w-4 h-4 rounded border-gray-300" />
                     </td>
                     <td className="px-6 py-4 text-sm font-medium" style={{ color: '#0A2540' }}>
                       {complaint.id.slice(-8).toUpperCase()}
