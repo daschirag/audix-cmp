@@ -54,8 +54,8 @@ router.get('/risk-alerts', auth, async (req, res) => {
 // GET /dashboard/purpose-distribution
 router.get('/purpose-distribution', auth, async (req, res) => {
   try {
-    const consents  = await prisma.consentMaster.findMany({ where: { status: 'ACTIVE' }, select: { purposes: true } })
-    const countMap  = {}
+    const consents = await prisma.consentMaster.findMany({ where: { status: 'ACTIVE' }, select: { purposes: true } })
+    const countMap = {}
     for (const c of consents) {
       const purposes = Array.isArray(c.purposes) ? c.purposes : []
       for (const p of purposes) {
@@ -122,7 +122,7 @@ router.post('/regulatory-actions/attach-resolution-evidence', auth, async (req, 
   return res.status(200).json({ success: true, message: 'Resolution evidence attached', data: { attachedAt: new Date().toISOString() } })
 })
 
-// GET /dashboard/access-control — get saved settings
+// GET /dashboard/access-control
 router.get('/access-control', auth, async (req, res) => {
   try {
     const settings = await prisma.auditLog.findFirst({
@@ -136,12 +136,11 @@ router.get('/access-control', auth, async (req, res) => {
   }
 })
 
-// POST /dashboard/access-control — save settings
+// POST /dashboard/access-control
 router.post('/access-control', auth, async (req, res) => {
   try {
     const { settings } = req.body
     if (!settings) return res.status(400).json({ success: false, message: 'Settings required' })
-
     await prisma.auditLog.create({
       data: {
         actorId:   req.user.id,
@@ -152,8 +151,20 @@ router.post('/access-control', auth, async (req, res) => {
         timestamp: new Date(),
       }
     })
-
     return res.status(200).json({ success: true, message: 'Access control settings saved', data: settings })
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// GET /dashboard/audit-logs
+router.get('/audit-logs', auth, async (req, res) => {
+  try {
+    const logs = await prisma.auditLog.findMany({
+      orderBy: { timestamp: 'desc' },
+      take:    100
+    })
+    return res.status(200).json({ success: true, data: logs })
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message })
   }
