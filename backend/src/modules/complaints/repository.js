@@ -4,20 +4,25 @@ const createComplaint = async (data) => {
   return await prisma.complaint.create({
     data: {
       dataPrincipalId: data.dataPrincipalId,
-      consentId: data.consentId || null,
-      subject: data.subject,
-      description: data.description,
-      category: data.category || null,
-      evidence: data.evidence || null,
-      status: 'RECEIVED'
+      consentId:       data.consentId || null,
+      subject:         data.subject,
+      description:     data.description,
+      category:        data.category || null,
+      evidence:        data.evidence || null,
+      status:          'RECEIVED'
     }
   })
 }
 
 const findComplaints = async (filters = {}) => {
   return await prisma.complaint.findMany({
-    where: filters,
-    orderBy: { createdAt: 'desc' }
+    where:   filters,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      user: {
+        select: { id: true, email: true, name: true }
+      }
+    }
   })
 }
 
@@ -26,12 +31,7 @@ const findComplaintById = async (id) => {
     where: { id },
     include: {
       user: {
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          mobile: true
-        }
+        select: { id: true, email: true, name: true, mobile: true }
       }
     }
   })
@@ -51,8 +51,8 @@ const writeAuditLog = async ({ actorId, actorRole, action, resource, ip }) => {
       actorRole,
       action,
       resource: resource ?? null,
-      ip: ip ?? 'unknown',
-    },
+      ip:       ip ?? 'unknown',
+    }
   })
 }
 
