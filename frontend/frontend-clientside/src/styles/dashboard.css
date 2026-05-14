@@ -1282,3 +1282,12 @@ input:checked + .slider::before {
   font-weight: 500;
   margin-top: 4px;
 }
+input[type='checkbox'].withdraw-checkbox {
+  width: 18px !important;
+  height: 18px !important;
+  accent-color: #4F46E5 !important;
+  cursor: pointer !important;
+  appearance: auto !important;
+  -webkit-appearance: auto !important;
+}
+
