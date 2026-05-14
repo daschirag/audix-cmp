@@ -3,12 +3,9 @@ import express from 'express'
 import cors from 'cors'
 import rateLimit from 'express-rate-limit'
 import prisma from './lib/prisma.js'
-import authRouter from './modules/auth/router.js'
-
-// ── Stub imports (others fill these in on their branches) ─────────────────────
+import authRouter       from './modules/auth/router.js'
 import consentRouter    from './modules/consent/router.js'
 import complaintsRouter from './modules/complaints/router.js'
-// import dashboardRouter  from './modules/dashboard/router.js'
 
 const app  = express()
 const PORT = process.env.PORT || 3001
@@ -23,7 +20,7 @@ app.use(cors({
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-// Rate limiter — 100 requests per 15 min per IP
+// Global rate limiter — 100 requests per 15 min per IP
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max:      100,
@@ -36,17 +33,12 @@ app.use(rateLimit({
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 
-app.use('/auth', authRouter)
-app.use('/consent', consentRouter)
-
-// Uncomment as each member pushes their module
-// app.use('/consent',    consentRouter)
+app.use('/auth',       authRouter)
+app.use('/consent',    consentRouter)
 app.use('/complaints', complaintsRouter)
-// app.use('/dashboard',  dashboardRouter)
 
 // ── Health checks ─────────────────────────────────────────────────────────────
 
-// Liveness — always 200, just confirms server is running
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
@@ -59,7 +51,6 @@ app.get('/health', (req, res) => {
   })
 })
 
-// Readiness — checks DB connection before confirming ready
 app.get('/ready', async (req, res) => {
   try {
     await prisma.$connect()
@@ -67,7 +58,7 @@ app.get('/ready', async (req, res) => {
       success: true,
       message: 'Server is ready',
       data: {
-        database: 'connected',
+        database:  'connected',
         timestamp: new Date().toISOString()
       }
     })
@@ -80,7 +71,8 @@ app.get('/ready', async (req, res) => {
   }
 })
 
-// 404 handler
+// ── 404 handler ───────────────────────────────────────────────────────────────
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -89,7 +81,8 @@ app.use((req, res) => {
   })
 })
 
-// Global error handler
+// ── Global error handler ──────────────────────────────────────────────────────
+
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err)
   res.status(500).json({
