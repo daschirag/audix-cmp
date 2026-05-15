@@ -8,12 +8,11 @@ export default function ToggleSwitch({ checked, onChange }: ToggleSwitchProps) {
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="relative inline-flex items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1"
+      className="relative inline-flex items-center rounded-full transition-colors duration-200 focus:outline-none"
       style={{
         width: 44,
         height: 24,
         backgroundColor: checked ? '#00C4B4' : '#D1D5DB',
-        focusRingColor: '#00C4B4',
       }}
       aria-checked={checked}
       role="switch"

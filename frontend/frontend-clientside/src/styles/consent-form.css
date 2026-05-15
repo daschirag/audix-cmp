@@ -762,3 +762,61 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
+.guardian-card {
+  background: #fffbeb;
+  border: 1px solid #f59e0b;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.guardian-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #92400e;
+  margin-bottom: 14px;
+}
+
+.guardian-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.guardian-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #78350f;
+  margin-bottom: 4px;
+}
+
+.guardian-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: Inter, sans-serif;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.guardian-input:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
+}
+
+.guardian-check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: #78350f;
+  margin-top: 8px;
+  cursor: pointer;
+}
+

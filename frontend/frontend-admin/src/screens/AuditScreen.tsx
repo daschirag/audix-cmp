@@ -9,17 +9,30 @@ interface AuditLog {
   actorId:   string
   actorRole: string
   action:    string
-  resource:  string | null
+  resource:  string | null | Record<string, unknown>
   ip:        string
   timestamp: string
 }
 
-function parseResource(resource: string | null): string {
+function parseResource(resource: string | null | Record<string, unknown>): string {
   if (!resource) return '—'
+  // Already an object
+  if (typeof resource === 'object') {
+    const obj = resource as Record<string, unknown>
+    if (obj.collection && obj.id)
+      return `${obj.collection} — ${String(obj.id).slice(-8).toUpperCase()}`
+    if (obj.cmpAdmin !== undefined)
+      return 'Access control settings updated'
+    const keys = Object.keys(obj)
+    if (keys.length > 0)
+      return `${keys[0]}: ${String(obj[keys[0]]).slice(0, 40)}`
+    return '—'
+  }
+  // String — try to parse as JSON
   try {
-    const parsed = JSON.parse(resource)
+    const parsed = JSON.parse(resource as string)
     if (parsed.collection && parsed.id)
-      return `${parsed.collection} — ${parsed.id.slice(-8).toUpperCase()}`
+      return `${parsed.collection} — ${String(parsed.id).slice(-8).toUpperCase()}`
     if (parsed.cmpAdmin !== undefined)
       return 'Access control settings updated'
     const keys = Object.keys(parsed)
@@ -27,7 +40,7 @@ function parseResource(resource: string | null): string {
       return `${keys[0]}: ${String(parsed[keys[0]]).slice(0, 40)}`
     return '—'
   } catch {
-    return resource.slice(0, 60)
+    return String(resource).slice(0, 60)
   }
 }
 
@@ -58,10 +71,13 @@ export default function AuditScreen() {
   const actionOptions = ['All Actions', ...Array.from(new Set(logs.map(l => l.action)))]
 
   const filtered = logs.filter((log) => {
+    const resourceStr = typeof log.resource === 'object' && log.resource
+      ? JSON.stringify(log.resource)
+      : String(log.resource || '')
     const matchSearch = !search ||
       log.actorId.toLowerCase().includes(search.toLowerCase()) ||
       log.action.toLowerCase().includes(search.toLowerCase()) ||
-      (log.resource || '').toLowerCase().includes(search.toLowerCase())
+      resourceStr.toLowerCase().includes(search.toLowerCase())
     const matchAction = actionFilter === 'All Actions' || log.action === actionFilter
     const logDate     = log.timestamp.split('T')[0]
     const matchFrom   = !dateFrom || logDate >= dateFrom
@@ -74,8 +90,7 @@ export default function AuditScreen() {
     const rows    = filtered.map(l => [
       new Date(l.timestamp).toLocaleString(),
       l.actorId.slice(-8).toUpperCase(),
-      l.actorRole,
-      l.action,
+      l.actorRole, l.action,
       parseResource(l.resource),
       formatIP(l.ip)
     ])
@@ -146,7 +161,6 @@ export default function AuditScreen() {
       <main className="p-8 overflow-auto" style={{ paddingTop: 72 + 32 }}>
         <h1 className="text-2xl font-semibold mb-6" style={{ color: '#0A2540' }}>Audit Logs</h1>
 
-        {/* Summary Stats */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           {stats.map((stat) => (
             <div key={stat.label} className="bg-white rounded-xl p-5"
@@ -160,7 +174,6 @@ export default function AuditScreen() {
           ))}
         </div>
 
-        {/* Filter Bar */}
         <div className="bg-white rounded-xl p-5 mb-4" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
@@ -184,7 +197,6 @@ export default function AuditScreen() {
           </div>
         </div>
 
-        {/* Export Buttons */}
         <div className="flex justify-end gap-3 mb-4">
           <button onClick={handleExportPDF}
             className="flex items-center gap-2 px-4 py-2 text-sm border border-gray-300 rounded-xl hover:bg-gray-50 bg-white">
@@ -197,7 +209,6 @@ export default function AuditScreen() {
           </button>
         </div>
 
-        {/* Audit Table */}
         <div className="bg-white rounded-xl overflow-hidden" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
           <table className="w-full">
             <thead>
